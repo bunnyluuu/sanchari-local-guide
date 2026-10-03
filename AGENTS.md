@@ -11,4 +11,5 @@
 
 ## Project architecture
 
-- Keep the hackathon prototype as an in-browser, state-driven mobile story on `/`; it is a visual reference, not a production backend.
+- Keep `/` as the mobile-first SUMARGA two-sided marketplace app; authenticated devices synchronize through short-lived Cloud records because browser-only state cannot cross physical devices.
+- Treat profiles, requests, and reviews as expiring prototype data; never add seeded users, requests, ratings, locations, or assistance history.
