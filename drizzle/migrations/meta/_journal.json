@@ -1,0 +1,13 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1791034198267,
+      "tag": "0000_create_expiring_sumarga_realtime",
+      "breakpoints": true
+    }
+  ]
+}
