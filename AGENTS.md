@@ -8,3 +8,7 @@
 > Commits you push to the connected branch sync back to Lovable and show up in
 > the editor, so keep the branch in a working state.
 <!-- LOVABLE:END -->
+
+## Project architecture
+
+- Keep the hackathon prototype as an in-browser, state-driven mobile story on `/`; it is a visual reference, not a production backend.

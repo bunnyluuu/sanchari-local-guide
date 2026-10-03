@@ -1,24 +1,210 @@
 import { createFileRoute } from "@tanstack/react-router";
+import {
+  ArrowLeft,
+  ArrowRight,
+  Bell,
+  Bot,
+  BusFront,
+  Check,
+  ChevronRight,
+  CircleHelp,
+  Clock3,
+  Compass,
+  Flag,
+  History,
+  Languages,
+  LocateFixed,
+  MapPin,
+  Menu,
+  MessageCircle,
+  Mic,
+  Navigation,
+  Phone,
+  ShieldCheck,
+  Siren,
+  Star,
+  UserRound,
+  Users,
+  X,
+} from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Button } from "@/components/ui/button";
 
-// No head() here: the home route inherits title/description/og/twitter from
-// __root.tsx, and ships no og:image so serve-time hosting can inject the
-// project's social preview (explicit og:image or latest screenshot).
 export const Route = createFileRoute("/")({
-  component: Index,
+  head: () => ({
+    meta: [
+      { title: "SANCHARI — Hyperlocal Companion & On-Demand Guidance" },
+      { name: "description", content: "AI-powered hyperlocal assistance from verified local companions." },
+      { property: "og:title", content: "SANCHARI — Your local companion, wherever you go" },
+      { property: "og:description", content: "Maps show you where to go. Sanchari helps you get there." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
+    ],
+  }),
+  component: SanchariPrototype,
 });
 
-// IMPORTANT: Replace this placeholder. See ./README.md for routing conventions.
-function Index() {
+type Screen =
+  | "splash" | "landing" | "roles" | "traveller" | "request" | "understood"
+  | "recommendations" | "profile" | "waiting" | "active" | "fallback"
+  | "completed" | "rating" | "analysis" | "local" | "incoming"
+  | "local-active" | "local-profile";
+
+const screens: { id: Screen; label: string; group: "Start" | "Traveller" | "Sancharakudu" }[] = [
+  { id: "splash", label: "Splash", group: "Start" }, { id: "landing", label: "Landing", group: "Start" },
+  { id: "roles", label: "Choose role", group: "Start" }, { id: "traveller", label: "Traveller home", group: "Traveller" },
+  { id: "request", label: "AI request", group: "Traveller" }, { id: "understood", label: "AI understood", group: "Traveller" },
+  { id: "recommendations", label: "Recommendations", group: "Traveller" }, { id: "profile", label: "Companion profile", group: "Traveller" },
+  { id: "waiting", label: "Request status", group: "Traveller" }, { id: "active", label: "Live assistance", group: "Traveller" },
+  { id: "fallback", label: "AI fallback", group: "Traveller" }, { id: "completed", label: "Completed", group: "Traveller" },
+  { id: "rating", label: "Rating & review", group: "Traveller" }, { id: "analysis", label: "AI analysis", group: "Traveller" },
+  { id: "local", label: "Dashboard", group: "Sancharakudu" }, { id: "incoming", label: "Incoming request", group: "Sancharakudu" },
+  { id: "local-active", label: "Active assistance", group: "Sancharakudu" }, { id: "local-profile", label: "Profile", group: "Sancharakudu" },
+];
+
+const defaultRequest = "I came to Hyderabad for an interview. I don't know Telugu and I need help getting from Secunderabad Railway Station to my interview location for around 2 hours.";
+
+function SanchariPrototype() {
+  const [screen, setScreen] = useState<Screen>("splash");
+  const [drawer, setDrawer] = useState(false);
+  const [request, setRequest] = useState(defaultRequest);
+  const [processing, setProcessing] = useState(false);
+  const [online, setOnline] = useState(true);
+  const [rating, setRating] = useState(5);
+  const [notice, setNotice] = useState<string | null>(null);
+
+  const index = screens.findIndex((item) => item.id === screen);
+  const activeMeta = screens[index];
+  const go = (next: Screen) => { setScreen(next); setDrawer(false); window.scrollTo({ top: 0, behavior: "smooth" }); };
+  const back = () => index > 0 && go(screens[index - 1].id);
+  const toast = (message: string) => { setNotice(message); window.setTimeout(() => setNotice(null), 2200); };
+
+  useEffect(() => {
+    if (screen !== "splash") return;
+    const timer = window.setTimeout(() => go("landing"), 1800);
+    return () => window.clearTimeout(timer);
+  }, [screen]);
+
+  const submitRequest = () => {
+    setProcessing(true);
+    window.setTimeout(() => { setProcessing(false); go("understood"); }, 1800);
+  };
+
+  const content = useMemo(() => {
+    switch (screen) {
+      case "splash": return <Splash onContinue={() => go("landing")} />;
+      case "landing": return <Landing onStart={() => go("roles")} />;
+      case "roles": return <RoleSelection onTraveller={() => go("traveller")} onLocal={() => go("local")} />;
+      case "traveller": return <TravellerDashboard onAsk={() => go("request")} onFallback={() => go("fallback")} />;
+      case "request": return <RequestInput request={request} setRequest={setRequest} processing={processing} onSubmit={submitRequest} />;
+      case "understood": return <Understanding onContinue={() => go("recommendations")} onFallback={() => go("fallback")} />;
+      case "recommendations": return <Recommendations onProfile={() => go("profile")} onRequest={() => go("waiting")} onFallback={() => go("fallback")} />;
+      case "profile": return <CompanionProfile onRequest={() => go("waiting")} onSafety={toast} />;
+      case "waiting": return <Waiting onAccepted={() => go("active")} onFallback={() => go("fallback")} />;
+      case "active": return <ActiveAssistance onComplete={() => go("completed")} onSafety={toast} />;
+      case "fallback": return <Fallback onDone={() => go("completed")} />;
+      case "completed": return <Completed onRate={() => go("rating")} />;
+      case "rating": return <Rating rating={rating} setRating={setRating} onSubmit={() => go("analysis")} />;
+      case "analysis": return <Analysis onHome={() => go("traveller")} />;
+      case "local": return <LocalDashboard online={online} setOnline={setOnline} onRequest={() => go("incoming")} onProfile={() => go("local-profile")} />;
+      case "incoming": return <IncomingRequest onAccept={() => go("local-active")} onDecline={() => { toast("Request declined"); go("local"); }} />;
+      case "local-active": return <LocalActive onComplete={() => go("local")} onSafety={toast} />;
+      case "local-profile": return <LocalProfile onBack={() => go("local")} />;
+    }
+  }, [screen, request, processing, online, rating]);
+
+  const immersive = screen === "splash" || screen === "landing" || screen === "roles";
   return (
-    <div
-      className="flex min-h-screen items-center justify-center"
-      style={{ backgroundColor: "#fcfbf8" }}
-    >
-      <img
-        data-lovable-blank-page-placeholder="REMOVE_THIS"
-        src="https://cdn.gpteng.co/blank-app-v1.svg"
-        alt="Your app will live here!"
-      />
-    </div>
+    <main className="min-h-screen bg-paper text-ink">
+      <div className="mx-auto min-h-screen w-full max-w-md bg-paper md:my-8 md:min-h-[844px] md:overflow-hidden md:rounded-[28px] md:border md:border-border md:shadow-2xl">
+        {!immersive && <AppHeader screen={activeMeta.label} onBack={back} onMenu={() => setDrawer(true)} />}
+        <div className="screen-enter">{content}</div>
+        {!immersive && <DemoRail screen={screen} go={go} />}
+      </div>
+      {drawer && <ScreenDrawer current={screen} go={go} close={() => setDrawer(false)} />}
+      {notice && <div className="fixed bottom-24 left-1/2 z-50 -translate-x-1/2 rounded-full bg-ink px-4 py-2 text-sm font-semibold text-paper shadow-xl">{notice}</div>}
+    </main>
   );
 }
+
+function AppHeader({ screen, onBack, onMenu }: { screen: string; onBack: () => void; onMenu: () => void }) {
+  return <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-border bg-paper/95 px-4 backdrop-blur">
+    <Button variant="ghost" size="icon" onClick={onBack} aria-label="Previous screen"><ArrowLeft /></Button>
+    <div className="text-center"><p className="font-display text-base uppercase">SANCHARI</p><p className="font-mono text-[9px] uppercase text-muted-foreground">{screen}</p></div>
+    <Button variant="ghost" size="icon" onClick={onMenu} aria-label="Open prototype navigator"><Menu /></Button>
+  </header>;
+}
+
+function DemoRail({ screen, go }: { screen: Screen; go: (screen: Screen) => void }) {
+  const local = screen === "local" || screen === "incoming" || screen === "local-active" || screen === "local-profile";
+  return <nav className="sticky bottom-0 z-20 grid grid-cols-3 border-t border-border bg-paper/95 px-2 py-2 backdrop-blur">
+    <Button variant="ghost" className={!local ? "nav-active" : "nav-item"} onClick={() => go("traveller")}><Compass />Traveller</Button>
+    <Button variant="ghost" className="nav-item" onClick={() => go("request")}><Bot />Ask AI</Button>
+    <Button variant="ghost" className={local ? "nav-active" : "nav-item"} onClick={() => go("local")}><Users />Local</Button>
+  </nav>;
+}
+
+function ScreenDrawer({ current, go, close }: { current: Screen; go: (screen: Screen) => void; close: () => void }) {
+  return <div className="fixed inset-0 z-50 bg-ink/35" onClick={close}>
+    <aside className="ml-auto h-full w-[84%] max-w-sm overflow-y-auto bg-paper p-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+      <div className="flex items-center justify-between"><div><p className="font-display text-2xl uppercase">Demo Navigator</p><p className="text-xs text-muted-foreground">18 judge-ready screens</p></div><Button variant="ghost" size="icon" onClick={close}><X /></Button></div>
+      {(["Start", "Traveller", "Sancharakudu"] as const).map((group) => <div key={group} className="mt-6"><p className="section-label">{group}</p><div className="mt-2 space-y-1">{screens.filter((item) => item.group === group).map((item, i) => <Button key={item.id} variant="ghost" className={`w-full justify-between rounded-xl ${current === item.id ? "bg-primary text-primary-foreground" : ""}`} onClick={() => go(item.id)}><span>{String(screens.indexOf(item) + 1).padStart(2, "0")} · {item.label}</span><ChevronRight /></Button>)}</div></div>)}
+    </aside>
+  </div>;
+}
+
+function Brand({ inverse = false }: { inverse?: boolean }) { return <div className="flex items-center gap-3"><span className={`grid size-11 place-items-center rounded-full font-display text-xl ${inverse ? "bg-paper text-ink" : "bg-primary text-primary-foreground"}`}>S</span><div><p className="font-display text-2xl uppercase leading-none">Sanchari</p><p className="mt-1 text-[10px] uppercase text-current/65">Your local companion</p></div></div>; }
+function StepLabel({ children }: { children: React.ReactNode }) { return <p className="section-label">{children}</p>; }
+function Primary({ children, onClick, icon = true }: { children: React.ReactNode; onClick: () => void; icon?: boolean }) { return <Button className="primary-action" onClick={onClick}>{children}{icon && <ArrowRight />}</Button>; }
+function Badge({ children, tone = "teal" }: { children: React.ReactNode; tone?: "teal" | "blue" | "yellow" | "green" }) { return <span className={`badge badge-${tone}`}>{children}</span>; }
+
+function Splash({ onContinue }: { onContinue: () => void }) { return <button className="relative flex min-h-screen w-full flex-col justify-between overflow-hidden bg-ink p-7 text-left text-paper" onClick={onContinue}>
+  <div className="route-lines" /><Brand inverse /><div className="relative"><p className="font-mono text-xs uppercase text-mustard">Hyperlocal companion network</p><h1 className="mt-4 max-w-[8ch] font-display text-7xl uppercase leading-[.88]">Arrive.<br />Connect.<br /><span className="text-primary">Belong.</span></h1><p className="mt-6 max-w-xs text-sm leading-relaxed text-paper/70">Maps show you where to go. Sanchari helps you get there.</p></div><div className="flex items-center justify-between font-mono text-[10px] uppercase text-paper/60"><span>Tap anywhere</span><span className="live-dot size-2 rounded-full bg-live" /></div>
+</button>; }
+
+function Landing({ onStart }: { onStart: () => void }) { return <div className="min-h-screen px-5 py-6"><Brand /><div className="mt-16"><Badge tone="blue"><MapPin />Built for unfamiliar cities</Badge><h1 className="mt-5 font-display text-6xl uppercase leading-[.9]">A local<br /><span className="text-primary">by your side.</span></h1><p className="mt-6 max-w-sm text-lg leading-relaxed text-muted-foreground">Get real human guidance from verified locals—or instant AI support when no one is available.</p></div><div className="relative mt-12 h-40 overflow-hidden rounded-[24px] bg-sky p-5 text-sky-foreground"><div className="absolute -right-10 top-8 size-36 rounded-full border-[18px] border-mustard" /><Navigation className="size-9" /><p className="mt-8 font-display text-2xl uppercase">Vizag → Hyderabad</p><p className="text-xs text-sky-foreground/70">New city. One trusted companion.</p></div><div className="mt-8"><Primary onClick={onStart}>Find your way</Primary><p className="mt-4 text-center font-mono text-[10px] uppercase text-muted-foreground">Hackathon interactive prototype · no sign-up needed</p></div></div>; }
+
+function RoleSelection({ onTraveller, onLocal }: { onTraveller: () => void; onLocal: () => void }) { return <div className="min-h-screen px-5 py-6"><Brand /><div className="mt-16"><StepLabel>Choose your journey</StepLabel><h1 className="mt-3 font-display text-5xl uppercase leading-none">How will you<br />use Sanchari?</h1></div><div className="mt-10 space-y-4"><button onClick={onTraveller} className="role-card bg-primary text-primary-foreground"><div className="grid size-12 place-items-center rounded-full bg-paper text-primary"><Compass /></div><div className="flex-1"><p className="font-display text-3xl uppercase">Traveller</p><p className="mt-1 text-sm opacity-75">I need local help in a new city</p></div><ArrowRight /></button><button onClick={onLocal} className="role-card bg-teal text-teal-foreground"><div className="grid size-12 place-items-center rounded-full bg-paper text-teal"><Users /></div><div className="flex-1"><p className="font-display text-3xl uppercase">Sancharakudu</p><p className="mt-1 text-sm opacity-75">I guide travellers in my city</p></div><ArrowRight /></button></div><div className="mt-10 border-l-4 border-mustard pl-4"><p className="font-display text-xl uppercase">Real guidance. Local confidence.</p><p className="mt-1 text-sm text-muted-foreground">Verified companion status is simulated for this prototype.</p></div></div>; }
+
+function TravellerDashboard({ onAsk, onFallback }: { onAsk: () => void; onFallback: () => void }) { return <Page><div className="flex items-start justify-between"><div><p className="text-sm text-muted-foreground">Good morning, Arjun</p><h1 className="font-display text-4xl uppercase">Where can we help?</h1></div><Button variant="outline" size="icon" className="rounded-full"><Bell /></Button></div><LocationStrip /><button onClick={onAsk} className="mt-6 w-full rounded-[24px] bg-card p-5 text-left shadow-sm ring-1 ring-border"><div className="flex items-center gap-2 text-teal"><Bot /><span className="font-mono text-[11px] font-semibold uppercase">Ask in your own words</span></div><p className="mt-4 text-lg text-muted-foreground">“I’m new here and need help getting to…”</p><div className="mt-6 flex items-center justify-between"><span className="text-sm font-semibold">Describe what you need</span><span className="grid size-11 place-items-center rounded-full bg-primary text-primary-foreground"><Mic /></span></div></button><div className="mt-7"><StepLabel>Quick assistance</StepLabel><div className="mt-3 grid grid-cols-2 gap-3"><Quick icon={<BusFront />} title="Transport" /><Quick icon={<Languages />} title="Language" /><Quick icon={<Navigation />} title="Navigation" /><Quick icon={<LocateFixed />} title="Nearby essentials" /></div></div><button onClick={onFallback} className="mt-6 flex w-full items-center gap-3 rounded-2xl bg-teal p-4 text-left text-teal-foreground"><Bot /><div className="flex-1"><p className="font-semibold">Need help right now?</p><p className="text-xs opacity-75">Open AI Sancharakudu</p></div><ChevronRight /></button></Page>; }
+
+function Page({ children, className = "" }: { children: React.ReactNode; className?: string }) { return <div className={`min-h-[calc(100vh-128px)] px-5 py-6 ${className}`}>{children}</div>; }
+function LocationStrip() { return <div className="mt-5 flex items-center gap-3 rounded-full bg-sky px-4 py-2.5 text-sky-foreground"><span className="live-dot size-2 rounded-full bg-mustard" /><MapPin className="size-4" /><span className="flex-1 truncate text-xs font-semibold">Secunderabad Railway Station</span><span className="font-mono text-[9px] uppercase">Live</span></div>; }
+function Quick({ icon, title }: { icon: React.ReactNode; title: string }) { return <div className="flex items-center gap-3 rounded-2xl border border-border bg-card p-3 text-sm font-semibold"><span className="text-primary">{icon}</span>{title}</div>; }
+
+function RequestInput({ request, setRequest, processing, onSubmit }: { request: string; setRequest: (value: string) => void; processing: boolean; onSubmit: () => void }) { return <Page><StepLabel>Tell us what you need</StepLabel><h1 className="mt-2 font-display text-4xl uppercase">Ask Sanchari</h1><p className="mt-2 text-sm text-muted-foreground">Use your natural language. AI will organize the details.</p><div className="mt-6 rounded-[24px] bg-card p-4 ring-1 ring-border"><textarea value={request} onChange={(e) => setRequest(e.target.value)} className="min-h-52 w-full resize-none bg-transparent text-base leading-relaxed outline-none" aria-label="Travel assistance request" /><div className="mt-3 flex items-center justify-between border-t border-border pt-3"><Badge tone="teal"><Languages />Any language</Badge><Button variant="ghost" size="icon" className="rounded-full"><Mic /></Button></div></div><div className="mt-5 flex flex-wrap gap-2"><Badge tone="yellow"><MapPin />Use current location</Badge><Badge tone="blue"><Clock3 />Around 2 hours</Badge></div>{processing ? <Processing /> : <div className="mt-8"><Primary onClick={onSubmit}>Understand my request</Primary></div>}</Page>; }
+function Processing() { return <div className="mt-8 rounded-[24px] bg-ink p-5 text-paper"><div className="flex items-center gap-3"><span className="ai-orbit"><Bot /></span><div><p className="font-display text-xl uppercase">Understanding your request…</p><p className="mt-1 text-xs text-paper/60">Analysing language, location and availability</p></div></div><div className="mt-5 h-1 overflow-hidden rounded-full bg-paper/15"><span className="processing-bar block h-full bg-mustard" /></div></div>; }
+
+function Understanding({ onContinue, onFallback }: { onContinue: () => void; onFallback: () => void }) { return <Page><div className="flex items-center gap-3 text-teal"><span className="grid size-10 place-items-center rounded-full bg-teal text-teal-foreground"><Check /></span><div><StepLabel>AI understood your request</StepLabel><p className="text-sm font-semibold">Everything looks right ✓</p></div></div><h1 className="mt-7 font-display text-4xl uppercase">Your assistance brief</h1><div className="mt-5 grid grid-cols-2 gap-3"><Fact label="Current location" value="Secunderabad Railway Station" icon={<MapPin />} /><Fact label="Destination" value="Interview Location" icon={<Navigation />} /><Fact label="Language" value="Telugu" icon={<Languages />} /><Fact label="Duration" value="2 Hours" icon={<Clock3 />} /></div><div className="mt-3 rounded-2xl bg-mustard p-4"><p className="text-[10px] font-semibold uppercase">Assistance</p><p className="mt-1 font-semibold">Transport + Navigation + Language</p></div><div className="mt-8 space-y-3"><Primary onClick={onContinue}>Find local companions</Primary><Button variant="ghost" className="w-full" onClick={onFallback}><Bot />See AI fallback instead</Button></div></Page>; }
+function Fact({ label, value, icon }: { label: string; value: string; icon: React.ReactNode }) { return <div className="min-h-32 rounded-2xl bg-card p-4 ring-1 ring-border"><span className="text-primary">{icon}</span><p className="mt-5 text-[10px] uppercase text-muted-foreground">{label}</p><p className="mt-1 text-sm font-semibold leading-tight">{value}</p></div>; }
+
+function Recommendations({ onProfile, onRequest, onFallback }: { onProfile: () => void; onRequest: () => void; onFallback: () => void }) { return <Page><StepLabel>Finding the best local companion</StepLabel><div className="mt-2 flex items-end justify-between"><h1 className="font-display text-4xl uppercase">Top matches</h1><span className="text-xs text-muted-foreground">3 nearby</span></div><div className="mt-5"><MatchCard featured onProfile={onProfile} onRequest={onRequest} /></div><div className="mt-3 grid grid-cols-2 gap-3"><MiniMatch initials="PN" name="Priya Nair" match="88%" rating="4.9" /><MiniMatch initials="SK" name="Suresh K" match="84%" rating="4.7" /></div><button onClick={onFallback} className="mt-5 flex w-full items-center gap-3 rounded-2xl border border-teal bg-teal/10 p-4 text-left text-teal"><Bot /><div className="flex-1"><p className="font-semibold">No companion available?</p><p className="text-xs">AI Sancharakudu can guide you instantly</p></div><ArrowRight /></button></Page>; }
+function MatchCard({ featured, onProfile, onRequest }: { featured?: boolean; onProfile: () => void; onRequest: () => void }) { return <div className="overflow-hidden rounded-[24px] bg-card ring-1 ring-border"><div className="flex"><button onClick={onProfile} className="flex w-[35%] flex-col justify-between bg-mustard p-4 text-left"><span className="font-display text-5xl">94<span className="text-xl">%</span></span><span className="text-[10px] font-bold uppercase">Best match</span></button><button onClick={onProfile} className="flex-1 p-4 text-left"><div className="flex items-start justify-between"><div><p className="font-display text-2xl uppercase">Ravi Kumar</p><p className="mt-1 text-xs text-muted-foreground">★ 4.8 · 128 assists</p></div><Badge tone="teal"><ShieldCheck />Verified</Badge></div><p className="mt-4 text-xs font-semibold text-primary">📍 1.2 km away</p><p className="mt-2 text-xs">Telugu · Hindi · English</p></button></div><div className="grid grid-cols-2 gap-2 px-4 pb-4 text-[11px]"><span>✓ Language compatible</span><span>✓ Nearby</span><span>✓ Available now</span><span>✓ Transport assistance</span></div><div className="px-4 pb-4"><Primary onClick={onRequest}>Request assistance</Primary></div></div>; }
+function MiniMatch({ initials, name, match, rating }: { initials: string; name: string; match: string; rating: string }) { return <div className="rounded-2xl bg-card p-3 ring-1 ring-border"><div className="grid size-10 place-items-center rounded-full bg-sky text-xs font-bold text-sky-foreground">{initials}</div><p className="mt-3 font-semibold">{name}</p><p className="text-xs text-muted-foreground">★ {rating} · Verified</p><Badge tone="yellow">{match} match</Badge></div>; }
+
+function CompanionProfile({ onRequest, onSafety }: { onRequest: () => void; onSafety: (value: string) => void }) { return <Page className="pb-8"><div className="-mx-5 -mt-6 bg-sky px-5 pb-8 pt-8 text-sky-foreground"><div className="flex items-end gap-4"><div className="grid size-24 place-items-center rounded-[24px] bg-mustard font-display text-3xl text-ink">RK</div><div><Badge tone="green"><ShieldCheck />Verified local</Badge><h1 className="mt-2 font-display text-4xl uppercase">Ravi Kumar</h1><p className="text-sm text-sky-foreground/70">Secunderabad · 1.2 km away</p></div></div></div><div className="mt-5 grid grid-cols-3 gap-2"><Stat value="4.8" label="Rating" /><Stat value="128" label="Assists" /><Stat value="94%" label="Match" /></div><div className="mt-6 space-y-5"><InfoRow icon={<Languages />} title="Languages" value="Telugu, Hindi, English" /><InfoRow icon={<MapPin />} title="Service area" value="Secunderabad · Begumpet · Ameerpet" /><InfoRow icon={<Clock3 />} title="Availability" value="Available now · up to 4 hours" /></div><div className="mt-6 rounded-2xl bg-card p-4 ring-1 ring-border"><StepLabel>Recent review</StepLabel><p className="mt-2 text-sm leading-relaxed">“Ravi made the station feel easy. He translated, found the right bus and stayed until I reached safely.”</p><p className="mt-2 text-xs font-semibold">★★★★★ · Meera, Pune</p></div><div className="mt-5 flex gap-2"><Button variant="outline" className="flex-1" onClick={() => onSafety("Report options opened")}><Flag />Report</Button><Button variant="outline" className="flex-1" onClick={() => onSafety("Ravi blocked in prototype")}><X />Block</Button><Button variant="destructive" size="icon" onClick={() => onSafety("Emergency help panel opened")} aria-label="Emergency"><Siren /></Button></div><div className="mt-6"><Primary onClick={onRequest}>Request Ravi</Primary></div></Page>; }
+function Stat({ value, label }: { value: string; label: string }) { return <div className="rounded-2xl bg-card p-3 text-center ring-1 ring-border"><p className="font-display text-2xl">{value}</p><p className="text-[10px] uppercase text-muted-foreground">{label}</p></div>; }
+function InfoRow({ icon, title, value }: { icon: React.ReactNode; title: string; value: string }) { return <div className="flex gap-3"><span className="grid size-10 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">{icon}</span><div><p className="text-xs text-muted-foreground">{title}</p><p className="text-sm font-semibold">{value}</p></div></div>; }
+
+function Waiting({ onAccepted, onFallback }: { onAccepted: () => void; onFallback: () => void }) { useEffect(() => { const id = window.setTimeout(onAccepted, 3500); return () => window.clearTimeout(id); }, []); return <Page><div className="flex flex-col items-center pt-12 text-center"><span className="waiting-rings grid size-24 place-items-center rounded-full bg-primary text-primary-foreground"><UserRound className="size-9" /></span><StepLabel>Request sent</StepLabel><h1 className="mt-3 font-display text-4xl uppercase">Waiting for Ravi</h1><p className="mt-3 max-w-xs text-sm text-muted-foreground">Ravi is reviewing your location, language and two-hour assistance request.</p></div><StatusSteps active={1} /><div className="mt-7 rounded-2xl bg-card p-4 ring-1 ring-border"><div className="flex items-center gap-3"><div className="grid size-12 place-items-center rounded-full bg-mustard font-bold">RK</div><div className="flex-1"><p className="font-semibold">Ravi Kumar</p><p className="text-xs text-muted-foreground">Usually responds in under 1 minute</p></div><span className="live-dot size-2 rounded-full bg-live" /></div></div><div className="mt-8 space-y-2"><Button className="w-full" onClick={onAccepted}>Simulate acceptance</Button><Button variant="ghost" className="w-full" onClick={onFallback}><Bot />Switch to AI fallback</Button></div></Page>; }
+function StatusSteps({ active }: { active: number }) { const labels = ["Sent", "Waiting", "Accepted", "Active", "Completed"]; return <div className="mt-10"><div className="flex items-center">{labels.map((label, i) => <div key={label} className="flex flex-1 flex-col items-center"><span className={`grid size-7 place-items-center rounded-full text-[10px] font-bold ${i <= active ? "bg-live text-ink" : "bg-muted text-muted-foreground"}`}>{i < active ? <Check className="size-3" /> : i + 1}</span><span className="mt-2 text-[8px] uppercase">{label}</span></div>)}</div></div>; }
+
+function ActiveAssistance({ onComplete, onSafety }: { onComplete: () => void; onSafety: (value: string) => void }) { return <Page><div className="rounded-[24px] bg-ink p-5 text-paper"><div className="flex items-center gap-2"><span className="live-dot size-2.5 rounded-full bg-live" /><span className="font-display text-xl uppercase">Live assistance</span><span className="ml-auto font-mono text-xs text-mustard">01:48:22</span></div><div className="mt-5 flex items-center gap-3"><div className="grid size-14 place-items-center rounded-full bg-mustard font-bold text-ink">RK</div><div><p className="font-semibold">Ravi is with you</p><p className="text-xs text-paper/60">Walking to Platform Exit 2</p></div></div></div><div className="mt-5 rounded-[24px] bg-sky p-5 text-sky-foreground"><div className="flex items-center gap-2"><Navigation /><p className="font-display text-xl uppercase">Next step</p></div><p className="mt-4 text-2xl font-semibold">Walk 80 m toward Exit 2</p><p className="mt-2 text-sm text-sky-foreground/70">Ravi will meet you beside the prepaid taxi booth.</p><div className="mt-4 h-2 overflow-hidden rounded-full bg-sky-foreground/15"><span className="block h-full w-[68%] bg-mustard" /></div></div><StatusSteps active={3} /><div className="mt-6 grid grid-cols-3 gap-2"><Action icon={<Phone />} label="Call Ravi" onClick={() => onSafety("Calling Ravi…")} /><Action icon={<MessageCircle />} label="Message" onClick={() => onSafety("Message panel opened")} /><Action icon={<Siren />} label="Emergency" danger onClick={() => onSafety("Emergency support opened")} /></div><div className="mt-6"><Primary onClick={onComplete}>Complete assistance</Primary></div></Page>; }
+function Action({ icon, label, onClick, danger }: { icon: React.ReactNode; label: string; onClick: () => void; danger?: boolean }) { return <Button variant={danger ? "destructive" : "outline"} className="h-20 flex-col rounded-2xl text-xs" onClick={onClick}>{icon}{label}</Button>; }
+
+function Fallback({ onDone }: { onDone: () => void }) { const [step, setStep] = useState(0); const guidance = [{ icon: <BusFront />, title: "Take Bus 11B", text: "Walk 120 m to Rathifile Bus Station. Board toward Ameerpet.", meta: "₹25 · 14 min" }, { icon: <Navigation />, title: "Exit from Gate 2", text: "Follow the blue signs. Turn right after the prepaid taxi booth.", meta: "2 min walk" }, { icon: <Languages />, title: "Say it in Telugu", text: "Interview address ki vellali. Ee bus Ameerpet veltunda?", meta: "Tap to play" }, { icon: <LocateFixed />, title: "Nearby essentials", text: "Apollo Pharmacy · Drinking water · ATM within 180 m.", meta: "Open now" }]; const item = guidance[step]; return <Page><div className="rounded-[24px] bg-teal p-5 text-teal-foreground"><div className="flex items-center gap-3"><span className="ai-orbit grid size-12 place-items-center rounded-full bg-paper text-teal"><Bot /></span><div><StepLabel>AI Sancharakudu</StepLabel><h1 className="font-display text-2xl uppercase">I’m here with you</h1></div></div><p className="mt-4 text-sm text-teal-foreground/75">No local companion is free right now. I’ll guide you step by step.</p></div><div className="mt-5 overflow-hidden rounded-[24px] bg-card ring-1 ring-border"><div className="bg-sky p-5 text-sky-foreground"><span className="grid size-12 place-items-center rounded-full bg-paper text-sky">{item.icon}</span><p className="mt-6 font-mono text-[10px] uppercase opacity-70">Step {step + 1} of 4</p><h2 className="mt-1 font-display text-3xl uppercase">{item.title}</h2><p className="mt-3 text-sm leading-relaxed opacity-80">{item.text}</p><Badge tone="yellow">{item.meta}</Badge></div><div className="grid grid-cols-4 gap-2 p-4">{guidance.map((guide, i) => <button key={guide.title} onClick={() => setStep(i)} className={`grid aspect-square place-items-center rounded-xl ${i === step ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>{guide.icon}</button>)}</div></div><div className="mt-5 flex items-center gap-3 rounded-2xl bg-mustard p-4"><ShieldCheck /><p className="text-xs font-semibold">Share your live status with a trusted contact while AI assistance is active.</p></div><div className="mt-6"><Primary onClick={onDone}>I reached safely</Primary></div></Page>; }
+
+function Completed({ onRate }: { onRate: () => void }) { return <Page><div className="flex flex-col items-center pt-8 text-center"><span className="grid size-24 place-items-center rounded-full bg-live text-ink"><Check className="size-12" /></span><StepLabel>Assistance completed</StepLabel><h1 className="mt-3 font-display text-5xl uppercase leading-none">You made it!</h1><p className="mt-3 text-sm text-muted-foreground">Ravi helped you reach your interview location safely.</p></div><div className="mt-8 rounded-[24px] bg-card p-5 ring-1 ring-border"><div className="flex items-center justify-between"><div><p className="text-xs text-muted-foreground">Secunderabad Station</p><p className="font-semibold">Interview Location</p></div><Flag className="text-primary" /></div><div className="my-4 h-px bg-border" /><div className="grid grid-cols-3 text-center"><Stat value="8.4 km" label="Distance" /><Stat value="1h 42m" label="Duration" /><Stat value="3" label="Help types" /></div></div><div className="mt-5 flex items-center gap-3 rounded-2xl bg-sky p-4 text-sky-foreground"><div className="grid size-12 place-items-center rounded-full bg-mustard font-bold text-ink">RK</div><div><p className="font-semibold">Assisted by Ravi</p><p className="text-xs opacity-70">Verified Sancharakudu</p></div><ShieldCheck className="ml-auto" /></div><div className="mt-7"><Primary onClick={onRate}>Rate your experience</Primary></div></Page>; }
+
+function Rating({ rating, setRating, onSubmit }: { rating: number; setRating: (value: number) => void; onSubmit: () => void }) { return <Page><StepLabel>Your feedback improves trust</StepLabel><h1 className="mt-2 font-display text-4xl uppercase">How was Ravi?</h1><div className="mt-8 flex items-center gap-4"><div className="grid size-20 place-items-center rounded-[22px] bg-mustard font-display text-2xl">RK</div><div><p className="font-display text-2xl uppercase">Ravi Kumar</p><Badge tone="teal"><ShieldCheck />Verified</Badge></div></div><div className="mt-8 flex justify-between">{[1,2,3,4,5].map((star) => <button key={star} aria-label={`${star} stars`} onClick={() => setRating(star)}><Star className={`size-10 ${star <= rating ? "fill-mustard text-mustard" : "text-muted"}`} /></button>)}</div><p className="mt-3 text-center font-display text-xl uppercase">{rating === 5 ? "Excellent guidance" : rating >= 4 ? "Very helpful" : "Thanks for your feedback"}</p><textarea className="mt-7 min-h-36 w-full rounded-[20px] bg-card p-4 text-sm outline-none ring-1 ring-border focus:ring-primary" defaultValue="Ravi was patient, translated clearly, and helped me reach the interview on time." aria-label="Review" /><div className="mt-4 flex flex-wrap gap-2"><Badge tone="green">Safe</Badge><Badge tone="blue">On time</Badge><Badge tone="teal">Great language help</Badge></div><div className="mt-8"><Primary onClick={onSubmit}>Submit review</Primary></div></Page>; }
+
+function Analysis({ onHome }: { onHome: () => void }) { return <Page><div className="rounded-[24px] bg-ink p-5 text-paper"><div className="flex items-center gap-3"><span className="grid size-12 place-items-center rounded-full bg-teal"><Bot /></span><div><StepLabel>AI review analysis</StepLabel><h1 className="font-display text-2xl uppercase">Trust signal updated</h1></div></div><p className="mt-4 text-sm text-paper/65">Sanchari analysed your review for quality, safety and companion strengths.</p></div><div className="mt-5 space-y-3"><AnalysisRow label="Traveller sentiment" value="Very positive" score="96%" color="bg-live" /><AnalysisRow label="Safety confidence" value="High" score="98%" color="bg-teal" /><AnalysisRow label="Language support" value="Excellent" score="94%" color="bg-sky" /></div><div className="mt-6 rounded-[24px] bg-mustard p-5"><StepLabel>AI summary</StepLabel><p className="mt-3 text-lg font-semibold leading-relaxed">Ravi was patient, punctual and especially effective at language assistance. No safety concerns detected.</p></div><div className="mt-5 rounded-2xl border border-border bg-card p-4"><div className="flex items-center gap-3"><History className="text-primary" /><div><p className="font-semibold">Saved to assistance history</p><p className="text-xs text-muted-foreground">Secunderabad → Interview · Oct 3</p></div><Check className="ml-auto text-live" /></div></div><div className="mt-8"><Primary onClick={onHome}>Back to traveller home</Primary></div></Page>; }
+function AnalysisRow({ label, value, score, color }: { label: string; value: string; score: string; color: string }) { return <div className="rounded-2xl bg-card p-4 ring-1 ring-border"><div className="flex justify-between"><div><p className="text-xs text-muted-foreground">{label}</p><p className="font-semibold">{value}</p></div><span className="font-display text-2xl">{score}</span></div><div className="mt-3 h-2 rounded-full bg-muted"><span className={`block h-full rounded-full ${color}`} style={{ width: score }} /></div></div>; }
+
+function LocalDashboard({ online, setOnline, onRequest, onProfile }: { online: boolean; setOnline: (value: boolean) => void; onRequest: () => void; onProfile: () => void }) { return <Page><div className="flex items-center justify-between"><div><p className="text-sm text-muted-foreground">Namaste, Ravi</p><h1 className="font-display text-4xl uppercase">Ready to guide?</h1></div><button onClick={onProfile} className="grid size-12 place-items-center rounded-full bg-mustard font-bold">RK</button></div><button onClick={() => setOnline(!online)} className={`mt-6 flex w-full items-center rounded-[24px] p-5 text-left ${online ? "bg-live text-ink" : "bg-muted text-muted-foreground"}`}><span className={`size-3 rounded-full ${online ? "live-dot bg-ink" : "bg-muted-foreground"}`} /><div className="ml-3 flex-1"><p className="font-display text-2xl uppercase">{online ? "You’re available" : "You’re offline"}</p><p className="text-xs opacity-65">{online ? "Travellers nearby can request help" : "Tap to start receiving requests"}</p></div><span className={`h-7 w-12 rounded-full p-1 ${online ? "bg-ink" : "bg-card"}`}><span className={`block size-5 rounded-full bg-paper transition-transform ${online ? "translate-x-5" : ""}`} /></span></button><div className="mt-7 grid grid-cols-3 gap-2"><Stat value="4.8" label="Rating" /><Stat value="128" label="Assists" /><Stat value="₹—" label="Prototype" /></div><div className="mt-7 flex items-end justify-between"><StepLabel>Incoming requests</StepLabel><Badge tone="green">1 New</Badge></div><button onClick={onRequest} className="mt-3 w-full rounded-[24px] bg-sky p-5 text-left text-sky-foreground"><div className="flex justify-between"><Badge tone="yellow">1.2 km away</Badge><span className="font-mono text-[10px] uppercase">Now</span></div><h2 className="mt-5 font-display text-3xl uppercase">Student needs interview help</h2><p className="mt-2 text-sm text-sky-foreground/75">Secunderabad Station → Ameerpet · Telugu assistance · 2 hours</p><div className="mt-5 flex items-center justify-between border-t border-sky-foreground/15 pt-4"><span className="text-sm font-semibold">View request</span><ArrowRight /></div></button><div className="mt-7"><StepLabel>Today</StepLabel><div className="mt-3 flex items-center gap-3 rounded-2xl bg-card p-4 ring-1 ring-border"><History className="text-primary" /><div><p className="font-semibold">2 completed assists</p><p className="text-xs text-muted-foreground">3h 20m helping travellers</p></div></div></div></Page>; }
+
+function IncomingRequest({ onAccept, onDecline }: { onAccept: () => void; onDecline: () => void }) { return <Page><div className="flex items-center gap-2 text-primary"><span className="live-dot size-2 rounded-full bg-primary" /><StepLabel>Incoming request · just now</StepLabel></div><h1 className="mt-3 font-display text-4xl uppercase">Arjun needs your help</h1><div className="mt-6 rounded-[24px] bg-card p-5 ring-1 ring-border"><div className="flex items-center gap-3"><div className="grid size-14 place-items-center rounded-full bg-sky font-bold text-sky-foreground">AS</div><div><p className="font-semibold">Arjun Sharma</p><p className="text-xs text-muted-foreground">Student from Vizag · New to Hyderabad</p></div></div><p className="mt-5 border-l-4 border-primary pl-4 text-sm leading-relaxed">“I have an interview and need help with transport, navigation and Telugu for around two hours.”</p></div><div className="mt-5 grid grid-cols-2 gap-3"><Fact label="Pickup" value="Secunderabad Station" icon={<MapPin />} /><Fact label="Destination" value="Ameerpet" icon={<Navigation />} /><Fact label="Language" value="Telugu help" icon={<Languages />} /><Fact label="Duration" value="2 hours" icon={<Clock3 />} /></div><div className="mt-4 rounded-2xl bg-mustard p-4"><p className="text-xs font-semibold">✓ Your languages match · ✓ 1.2 km away · ✓ Transport assistance match</p></div><div className="mt-8 grid grid-cols-2 gap-3"><Button variant="outline" className="h-12 rounded-full" onClick={onDecline}>Decline</Button><Button className="primary-action" onClick={onAccept}>Accept <Check /></Button></div></Page>; }
+
+function LocalActive({ onComplete, onSafety }: { onComplete: () => void; onSafety: (value: string) => void }) { return <Page><div className="rounded-[24px] bg-ink p-5 text-paper"><div className="flex items-center gap-2"><span className="live-dot size-2 rounded-full bg-live" /><p className="font-display text-xl uppercase">Assistance active</p><span className="ml-auto font-mono text-xs text-mustard">00:11:38</span></div><h1 className="mt-6 font-display text-4xl uppercase">Meet Arjun<br />at Exit 2</h1><p className="mt-2 text-sm text-paper/60">You are 120 m away · approximately 2 minutes</p></div><div className="mt-5 rounded-[24px] bg-sky p-5 text-sky-foreground"><div className="flex items-center justify-between"><MapPin /><Badge tone="yellow">Live location</Badge></div><div className="relative mt-5 h-28"><span className="absolute left-4 top-6 size-4 rounded-full border-4 border-paper bg-primary" /><span className="absolute left-8 top-8 h-1 w-[62%] rotate-6 bg-mustard" /><span className="absolute right-10 top-12 size-5 rounded-full border-4 border-paper bg-live" /></div><div className="flex justify-between text-xs"><span>You</span><span>Arjun</span></div></div><div className="mt-5 grid grid-cols-3 gap-2"><Action icon={<Phone />} label="Call" onClick={() => onSafety("Calling Arjun…")} /><Action icon={<MessageCircle />} label="Message" onClick={() => onSafety("Message panel opened")} /><Action icon={<Siren />} label="Emergency" danger onClick={() => onSafety("Emergency support opened")} /></div><div className="mt-5 rounded-2xl bg-card p-4 ring-1 ring-border"><StepLabel>Traveller needs</StepLabel><p className="mt-2 text-sm font-semibold">Transport · Navigation · Telugu assistance</p><p className="mt-1 text-xs text-muted-foreground">Destination: Interview location, Ameerpet</p></div><div className="mt-7"><Primary onClick={onComplete}>Complete assistance</Primary></div></Page>; }
+
+function LocalProfile({ onBack }: { onBack: () => void }) { return <Page><div className="flex flex-col items-center text-center"><div className="grid size-28 place-items-center rounded-[28px] bg-mustard font-display text-4xl">RK</div><Badge tone="teal"><ShieldCheck />Prototype verified</Badge><h1 className="mt-3 font-display text-4xl uppercase">Ravi Kumar</h1><p className="text-sm text-muted-foreground">Sancharakudu · Secunderabad</p></div><div className="mt-7 grid grid-cols-3 gap-2"><Stat value="4.8" label="Rating" /><Stat value="128" label="Assists" /><Stat value="2 yrs" label="Active" /></div><div className="mt-7 space-y-5"><InfoRow icon={<Languages />} title="Languages" value="Telugu, Hindi, English" /><InfoRow icon={<MapPin />} title="Service area" value="Secunderabad, Begumpet, Ameerpet" /><InfoRow icon={<CircleHelp />} title="Specialties" value="Transport, interviews, hospital visits" /><InfoRow icon={<History />} title="Assistance history" value="128 completed · 96% positive" /></div><div className="mt-7 rounded-2xl bg-teal p-4 text-teal-foreground"><div className="flex items-center gap-3"><ShieldCheck /><div><p className="font-semibold">Verified status</p><p className="text-xs opacity-70">Prototype status only — no government ID verification</p></div></div></div><div className="mt-7"><Primary onClick={onBack}>Back to dashboard</Primary></div></Page>; }
