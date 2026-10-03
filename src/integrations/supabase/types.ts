@@ -14,7 +14,158 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      assistance_requests: {
+        Row: {
+          accepted_at: string | null
+          ai_summary: string | null
+          assistance_types: string[]
+          completed_at: string | null
+          created_at: string
+          destination: string
+          duration_minutes: number
+          expires_at: string
+          from_location: string
+          id: string
+          language: string
+          margadarshi_id: string | null
+          natural_language_request: string | null
+          started_at: string | null
+          status: Database["public"]["Enums"]["assistance_status"]
+          traveller_id: string
+          urgency: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          ai_summary?: string | null
+          assistance_types?: string[]
+          completed_at?: string | null
+          created_at?: string
+          destination: string
+          duration_minutes: number
+          expires_at?: string
+          from_location: string
+          id?: string
+          language: string
+          margadarshi_id?: string | null
+          natural_language_request?: string | null
+          started_at?: string | null
+          status?: Database["public"]["Enums"]["assistance_status"]
+          traveller_id: string
+          urgency?: string
+        }
+        Update: {
+          accepted_at?: string | null
+          ai_summary?: string | null
+          assistance_types?: string[]
+          completed_at?: string | null
+          created_at?: string
+          destination?: string
+          duration_minutes?: number
+          expires_at?: string
+          from_location?: string
+          id?: string
+          language?: string
+          margadarshi_id?: string | null
+          natural_language_request?: string | null
+          started_at?: string | null
+          status?: Database["public"]["Enums"]["assistance_status"]
+          traveller_id?: string
+          urgency?: string
+        }
+        Relationships: []
+      }
+      assistance_reviews: {
+        Row: {
+          created_at: string
+          expires_at: string
+          id: string
+          margadarshi_id: string
+          rating: number
+          request_id: string
+          review: string
+          traveller_id: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at?: string
+          id?: string
+          margadarshi_id: string
+          rating: number
+          request_id: string
+          review: string
+          traveller_id: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          id?: string
+          margadarshi_id?: string
+          rating?: number
+          request_id?: string
+          review?: string
+          traveller_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assistance_reviews_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: true
+            referencedRelation: "assistance_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          display_name: string
+          expires_at: string
+          is_online: boolean
+          languages: string[]
+          last_seen_at: string
+          user_id: string
+          verification_status: string
+        }
+        Insert: {
+          display_name: string
+          expires_at?: string
+          is_online?: boolean
+          languages?: string[]
+          last_seen_at?: string
+          user_id: string
+          verification_status?: string
+        }
+        Update: {
+          display_name?: string
+          expires_at?: string
+          is_online?: boolean
+          languages?: string[]
+          last_seen_at?: string
+          user_id?: string
+          verification_status?: string
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          expires_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          expires_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          expires_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -23,7 +174,14 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      app_role: "traveller" | "margadarshi"
+      assistance_status:
+        | "requested"
+        | "accepted"
+        | "active"
+        | "completed"
+        | "declined"
+        | "cancelled"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +308,16 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["traveller", "margadarshi"],
+      assistance_status: [
+        "requested",
+        "accepted",
+        "active",
+        "completed",
+        "declined",
+        "cancelled",
+      ],
+    },
   },
 } as const
